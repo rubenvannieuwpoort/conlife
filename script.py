@@ -1,5 +1,6 @@
-from PIL import Image
+import sys
 import struct
+from PIL import Image
 
 def image_to_grayscale_binary(input_image_path, output_file_path):
     with Image.open(input_image_path) as img:
@@ -11,4 +12,4 @@ def image_to_grayscale_binary(input_image_path, output_file_path):
             f.write(bytearray(pixel_data))
 
 if __name__ == "__main__":
-    image_to_grayscale_binary("conway.png", "conway.raw")
+    image_to_grayscale_binary(sys.argv[1], "conway.raw")

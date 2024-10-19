@@ -19,7 +19,7 @@ bool dopoll() {
 
 SDL_Window *window;
 SDL_Renderer *renderer;
-int init(int window_width, int window_height) {
+int init(const char *title, int window_width, int window_height) {
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         printf("SDL_Init Error: %s\n", SDL_GetError());
@@ -27,7 +27,7 @@ int init(int window_width, int window_height) {
     }
 
     // Create SDL window and renderer
-    window = SDL_CreateWindow("Grayscale Renderer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+    window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                               window_width, window_height, SDL_WINDOW_SHOWN);
     if (!window) {
         printf("SDL_CreateWindow Error: %s\n", SDL_GetError());
