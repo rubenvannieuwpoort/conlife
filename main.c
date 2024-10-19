@@ -13,7 +13,9 @@
 #define WIDTH 707
 #define HEIGHT 900
 
-#define N 4
+#define N 2
+
+#define GAMMA 1.8
 
 #define GLOBALGRIDSIZE (WIDTH * HEIGHT)
 #define LOCALGRIDDEPTH (2 * N + 2)
@@ -29,8 +31,15 @@ uint8_t *target;
 uint64_t compute_local_loss(int x, int y, bool flip, uint8_t **result_grid);
 void update(void);
 
+// NOTE: this is a cheap non-generic way that only works for the specific averaging filter that is used
+uint8_t gamma_correct[9] = { 0 };
 
 int main(int argc, char *argv[]) {
+    // Initialize gamma correction lookup table
+    for (int i = 0; i < 9; i++) {
+        gamma_correct[i] = (uint8_t)round(pow(i / 8.0, 1.0 / GAMMA) * 255);
+    }
+
     Image *image = load(TARGET_PATH);
     if (!image) {
         return 1;
@@ -89,6 +98,13 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+uint8_t filtered(uint8_t *local_grid, int i) {
+    int sum = (local_grid[i - LOCALGRIDLENGTH - 1] + local_grid[i - LOCALGRIDLENGTH] + local_grid[i - LOCALGRIDLENGTH + 1]
+             + local_grid[i - 1]                   + local_grid[i]                   + local_grid[i + 1]
+             + local_grid[i + LOCALGRIDLENGTH - 1] + local_grid[i + LOCALGRIDLENGTH] + local_grid[i + LOCALGRIDLENGTH + 1]);
+    return gamma_correct[sum];
+}
+
 uint8_t local_grid1[LOCALGRIDSIZE], local_grid2[LOCALGRIDSIZE];
 uint64_t compute_local_loss(int x, int y, bool flip, uint8_t **resultgrid) {
     uint8_t *local_grid = &local_grid1[0], *next_local_grid = &local_grid2[0];
@@ -136,12 +152,8 @@ uint64_t compute_local_loss(int x, int y, bool flip, uint8_t **resultgrid) {
     for (int dx = -(N + 1); dx <= N + 1; dx++) {
         for (int dy = -(N + 1); dy <= N + 1; dy++) {
             int i = LOCALGRIDCENTER + dy * LOCALGRIDLENGTH + dx;
-            int64_t filtered = (local_grid[i - LOCALGRIDLENGTH - 1] + local_grid[i - LOCALGRIDLENGTH] + local_grid[i - LOCALGRIDLENGTH + 1]
-                              + local_grid[i - 1]                   + local_grid[i]                   + local_grid[i + 1]
-                              + local_grid[i + LOCALGRIDLENGTH - 1] + local_grid[i + LOCALGRIDLENGTH] + local_grid[i + LOCALGRIDLENGTH + 1]);
-
             int sx = (x + dx + WIDTH) % WIDTH, sy = (y + dy + HEIGHT) % HEIGHT;
-            int64_t diff = (int64_t)(target[WIDTH * sy + sx]) - filtered * 255 / 9;
+            int64_t diff = (int64_t)(target[WIDTH * sy + sx]) - filtered(local_grid, i);
             local_loss += (uint64_t)(diff * diff);
         }
     }
