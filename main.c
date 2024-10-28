@@ -13,15 +13,23 @@
 #define WIDTH 707
 #define HEIGHT 900
 
-#define N 2
+#define N 1
 
-#define GAMMA 1.8
+#define GAMMA 1.5
 
 #define GLOBALGRIDSIZE (WIDTH * HEIGHT)
 #define LOCALGRIDDEPTH (2 * N + 2)
 #define LOCALGRIDLENGTH (2 * LOCALGRIDDEPTH + 1)
 #define LOCALGRIDSIZE (LOCALGRIDLENGTH * LOCALGRIDLENGTH)
 #define LOCALGRIDCENTER (LOCALGRIDSIZE / 2)
+
+#define SUM_COEFFS 10
+const uint8_t coeffs[9] = { 1, 1, 1, 1, 2, 1, 1, 1, 1 };
+
+// #define SUM_COEFFS 16
+// const uint8_t coeffs[9] = { 1, 2, 1, 2, 4, 2, 1, 2, 1 };
+
+uint8_t gamma_encoded[SUM_COEFFS] = { 0 };  // will be filled
 
 uint64_t local_loss[GLOBALGRIDSIZE];
 uint8_t global_grid[GLOBALGRIDSIZE];
@@ -31,13 +39,11 @@ uint8_t *target;
 uint64_t compute_local_loss(int x, int y, bool flip, uint8_t **result_grid);
 void update(void);
 
-// NOTE: this is a cheap non-generic way that only works for the specific averaging filter that is used
-uint8_t gamma_correct[9] = { 0 };
 
 int main(int argc, char *argv[]) {
     // Initialize gamma correction lookup table
-    for (int i = 0; i < 9; i++) {
-        gamma_correct[i] = (uint8_t)round(pow(i / 8.0, 1.0 / GAMMA) * 255);
+    for (int i = 0; i < SUM_COEFFS; i++) {
+        gamma_encoded[i] = (uint8_t)round(pow(i / (1.0 * SUM_COEFFS), 1.0 / GAMMA) * 255);
     }
 
     Image *image = load(TARGET_PATH);
@@ -99,10 +105,10 @@ int main(int argc, char *argv[]) {
 }
 
 uint8_t filtered(uint8_t *local_grid, int i) {
-    int sum = (local_grid[i - LOCALGRIDLENGTH - 1] + local_grid[i - LOCALGRIDLENGTH] + local_grid[i - LOCALGRIDLENGTH + 1]
-             + local_grid[i - 1]                   + local_grid[i]                   + local_grid[i + 1]
-             + local_grid[i + LOCALGRIDLENGTH - 1] + local_grid[i + LOCALGRIDLENGTH] + local_grid[i + LOCALGRIDLENGTH + 1]);
-    return gamma_correct[sum];
+    int sum = (coeffs[0] * local_grid[i - LOCALGRIDLENGTH - 1] + coeffs[1] * local_grid[i - LOCALGRIDLENGTH] + coeffs[2] * local_grid[i - LOCALGRIDLENGTH + 1]
+             + coeffs[3] * local_grid[i - 1]                   + coeffs[4] * local_grid[i]                   + coeffs[5] * local_grid[i + 1]
+             + coeffs[6] * local_grid[i + LOCALGRIDLENGTH - 1] + coeffs[7] * local_grid[i + LOCALGRIDLENGTH] + coeffs[8] * local_grid[i + LOCALGRIDLENGTH + 1]);
+    return gamma_encoded[sum];
 }
 
 uint8_t local_grid1[LOCALGRIDSIZE], local_grid2[LOCALGRIDSIZE];
